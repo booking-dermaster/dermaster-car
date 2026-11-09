@@ -102,6 +102,10 @@
   .hidden { display: none !important; }
   .tag { display: inline-block; font-weight: 700; padding: 1px 7px; border-radius: 8px; background: var(--accent-tint); color: var(--accent); margin: 2px 4px 0 0; }
   .tag.past { background: #ECEEF2; color: #465061; }
+  /* iOS: ช่องวัน/เวลาไม่ล้นกรอบ */
+  .grid2 > .field { min-width: 0; }
+  .field input[type=date], .field input[type=time] { -webkit-appearance: none; appearance: none; display: block; min-width: 0; max-width: 100%; height: 50px; line-height: 50px; padding-top: 0; padding-bottom: 0; text-align: center; }
+  .field input::-webkit-date-and-time-value { text-align: center; line-height: 50px; margin: 0; }
 </style>
 
   <style>
@@ -278,7 +282,9 @@ startApp(function () {
   $('booker').value = S.user.name;
   $('date').min = b.today;
   $('date').value = b.today;
-  $('date').onchange = loadAvailability;
+  $('date').onchange = function () { syncTimeMin(); loadAvailability(); };
+  $('time').onchange = syncTimeMin;
+  syncTimeMin();
   C.type = (b.types[0] || {}).type || '';
   loadAvailability();
 
@@ -338,7 +344,22 @@ async function loadAvailability() {
   } catch (e) { handleError(e); }
 }
 
+/* กันเลือกเวลาที่ผ่านมาแล้วของวันนี้ */
+function nowHM() { const d = new Date(); return pad2(d.getHours()) + ':' + pad2(d.getMinutes()); }
+function syncTimeMin() {
+  const isToday = $('date').value === S.boot.today;
+  $('time').min = isToday ? nowHM() : '';
+  if (isToday && $('time').value && $('time').value < nowHM()) {
+    $('time').value = '';
+    toast('เวลานี้ผ่านมาแล้ว กรุณาเลือกเวลาหลัง ' + nowHM(), true);
+    return false;
+  }
+  return true;
+}
+
 async function submitBooking() {
+  if ($('date').value && $('date').value < S.boot.today) return toast('วันที่ผ่านมาแล้ว', true);
+  if (!syncTimeMin()) return;
   const f = formData($('bookForm'));
   f.type = C.type;
   f.purpose = C.purpose;
