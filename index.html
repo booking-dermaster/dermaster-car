@@ -171,13 +171,10 @@
         </div>
 
         <div class="card">
-          <h2>2. ประเภทรถ <span class="sub">· จำนวนว่างตามวันที่เลือก</span></h2>
+          <h2>2. เลือกรถ <span class="sub">· สถานะตามวันที่เลือก</span></h2>
           <div id="typeList" role="radiogroup" aria-label="ประเภทรถ" style="display:flex;flex-direction:column;gap:8px"></div>
           <input type="hidden" name="type" id="type">
-          <div class="field" id="plateBox" style="display:none">
-            <label for="plate">รถคันที่จะได้ <span class="opt">(ทะเบียน)</span></label>
-            <select id="plate" name="plate"></select>
-          </div>
+          <input type="hidden" name="plate" id="plate">
           <div class="field">
             <label for="driver">คนขับ</label>
             <select id="driver" name="driver"></select>
@@ -316,7 +313,9 @@ function pickPurpose(p) {
   $('purposeDetail').required = other;
 }
 
+/* รายการรถทีละคัน (ทะเบียน) — ใช้ api_cars; ถ้า backend เก่าจะกลับไปแสดงแบบรายประเภท */
 function renderTypes() {
+  if (C.list) return renderCars();
   const list = S.boot.types;
   if (!list.length) { $('typeList').innerHTML = '<div class="empty">ยังไม่มีรถในชีต Vehicles ที่สถานะ Active</div>'; return; }
   $('typeList').innerHTML = list.map(function (t) {
@@ -325,8 +324,7 @@ function renderTypes() {
     const on = C.type === t.type;
     return '<button type="button" role="radio" aria-checked="' + on + '" class="opt-row' + (on ? ' on' : '') + '" data-t="' + esc(t.type) + '"' + (full ? ' disabled' : '') + '>' +
       '<span class="radio"></span><span class="grow"><span class="t-strong">' + esc(t.type) + '</span>' +
-      '<span class="t-meta">' + (t.seats ? 'สูงสุด ' + t.seats + ' ที่นั่ง · ' : '') + 'ทั้งหมด ' + t.total + ' คัน</span>' +
-      (C.cars && C.cars[t.type] && C.cars[t.type].length ? '<span class="t-meta" style="color:#1B6337">ว่าง: ' + C.cars[t.type].map(function (c) { return esc(c.plate); }).join(', ') + '</span>' : '') + '</span>' +
+      '<span class="t-meta">' + (t.seats ? 'สูงสุด ' + t.seats + ' ที่นั่ง · ' : '') + 'ทั้งหมด ' + t.total + ' คัน</span></span>' +
       (free === undefined ? '' : full ? '<span class="pill bad">เต็ม</span>' : '<span class="pill ok">ว่าง ' + free + ' คัน</span>') + '</button>';
   }).join('');
   $('typeList').onclick = function (ev) {
@@ -334,18 +332,31 @@ function renderTypes() {
     if (x && !x.disabled) { C.type = x.getAttribute('data-t'); renderTypes(); }
   };
   $('type').value = C.type;
-  renderPlates();
+  $('plate').value = '';
 }
 
-/* เลือกทะเบียนรถจากคันที่ว่างของประเภทที่เลือก */
-function renderPlates() {
-  const list = (C.cars && C.cars[C.type]) || [];
-  $('plateBox').style.display = list.length ? '' : 'none';
-  const keep = $('plate').value;
-  $('plate').innerHTML = list.map(function (c) {
-    return '<option value="' + esc(c.plate) + '">' + esc(c.plate) + (c.model ? ' · ' + esc(c.model) : '') + '</option>';
+function renderCars() {
+  const list = C.list;
+  if (!list.length) { $('typeList').innerHTML = '<div class="empty">ยังไม่มีรถในชีต Vehicles ที่สถานะ Active</div>'; return; }
+  $('typeList').innerHTML = list.map(function (c) {
+    const on = C.plate === c.plate;
+    return '<button type="button" role="radio" aria-checked="' + on + '" class="opt-row' + (on ? ' on' : '') + '" data-plate="' + esc(c.plate) + '"' + (c.free ? '' : ' disabled') + '>' +
+      '<span class="radio"></span><span class="grow"><span class="t-strong">' + esc(c.plate) + '</span>' +
+      '<span class="t-meta">' + esc(c.type) + (c.model ? ' · ' + esc(c.model) : '') + (c.seats ? ' · ' + c.seats + ' ที่นั่ง' : '') + '</span></span>' +
+      (c.free ? '<span class="pill ok">ว่าง</span>' : '<span class="pill bad">ไม่ว่าง</span>') + '</button>';
   }).join('');
-  if (list.some(function (c) { return c.plate === keep; })) $('plate').value = keep;
+  $('typeList').onclick = function (ev) {
+    const x = ev.target.closest('[data-plate]');
+    if (x && !x.disabled) { pickCar(x.getAttribute('data-plate')); renderCars(); }
+  };
+}
+
+function pickCar(plate) {
+  const c = (C.list || []).filter(function (x) { return x.plate === plate; })[0];
+  C.plate = c ? c.plate : '';
+  C.type = c ? c.type : '';
+  $('plate').value = C.plate;
+  $('type').value = C.type;
 }
 
 async function loadAvailability() {
@@ -353,16 +364,17 @@ async function loadAvailability() {
   if (!$('date').value) return;
   try {
     try {
-      C.cars = await call('api_freeCars', $('date').value);
-      C.avail = {};
-      S.boot.types.forEach(function (t) { C.avail[t.type] = (C.cars[t.type] || []).length; });
+      C.list = await call('api_cars', $('date').value);
+      const cur = C.list.filter(function (x) { return x.plate === C.plate && x.free; })[0];
+      const first = C.list.filter(function (x) { return x.free; })[0];
+      pickCar(cur ? cur.plate : first ? first.plate : '');
     } catch (e2) {
-      C.cars = null;
+      C.list = null;
       C.avail = await call('api_availability', $('date').value);
-    }
-    if (C.avail[C.type] === 0) {
-      const next = S.boot.types.filter(function (t) { return C.avail[t.type] > 0; })[0];
-      if (next) C.type = next.type;
+      if (C.avail[C.type] === 0) {
+        const next = S.boot.types.filter(function (t) { return C.avail[t.type] > 0; })[0];
+        if (next) C.type = next.type;
+      }
     }
     renderTypes();
   } catch (e) { handleError(e); }
@@ -389,7 +401,8 @@ async function submitBooking() {
   f.purpose = C.purpose;
   const form = $('bookForm');
   if (!form.reportValidity()) return;
-  if (!f.type) return toast('กรุณาเลือกประเภทรถ', true);
+  if (!f.type) return toast(C.list ? 'กรุณาเลือกรถ' : 'กรุณาเลือกประเภทรถ', true);
+  if (C.list) f.plate = C.plate;
   $('submitBtn').disabled = true;
   busy(true);
   try {
