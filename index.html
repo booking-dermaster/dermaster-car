@@ -409,11 +409,13 @@ async function renderDay() {
   let total = 0, used = 0;
   const rows = types.map(function (t) {
     const items = list.filter(function (b) { return b.type === t.type; }).sort(function (a, b) { return String(a.time).localeCompare(String(b.time)); });
-    const u = Math.min(items.length, t.total), free = Math.max(0, t.total - items.length);
+    const act = items.filter(function (b) { return b.status !== 'เสร็จสิ้น'; }).length; // คืนรถแล้ว = รถว่าง
+    const u = Math.min(act, t.total), free = Math.max(0, t.total - act);
     total += t.total; used += u;
     const jobs = items.map(function (b) {
-      return '<span class="' + (isPast ? 'tag past' : 'tag') + '">' + esc(b.time) + '</span><span style="font-size:13px">' + esc(b.purpose) +
-        (b.plate ? ' · ' + esc(b.plate) : '') + ' · คนขับ: ' + esc(b.driver || 'ไม่ระบุ') + '</span>';
+      const done = b.status === 'เสร็จสิ้น';
+      return '<span class="' + (isPast || done ? 'tag past' : 'tag') + '">' + esc(b.time) + '</span><span style="font-size:13px">' + esc(b.purpose) +
+        (b.plate ? ' · ' + esc(b.plate) : '') + ' · คนขับ: ' + esc(b.driver || 'ไม่ระบุ') + (done ? ' · <b style="color:#1B6337">คืนรถแล้ว</b>' : '') + '</span>';
     }).join('<br>');
     const pill = free === 0 ? '<span class="pill bad">เต็ม</span>' : '<span class="pill ok">ว่าง ' + free + '/' + t.total + '</span>';
     return '<div class="list-item"><span class="grow"><span style="font-size:16px;font-weight:700">' + esc(t.type) +
