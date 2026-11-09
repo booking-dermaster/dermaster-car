@@ -174,6 +174,10 @@
           <h2>2. ประเภทรถ <span class="sub">· จำนวนว่างตามวันที่เลือก</span></h2>
           <div id="typeList" role="radiogroup" aria-label="ประเภทรถ" style="display:flex;flex-direction:column;gap:8px"></div>
           <input type="hidden" name="type" id="type">
+          <div class="field" id="plateBox" style="display:none">
+            <label for="plate">รถคันที่จะได้ <span class="opt">(ทะเบียน)</span></label>
+            <select id="plate" name="plate"></select>
+          </div>
           <div class="field">
             <label for="driver">คนขับ</label>
             <select id="driver" name="driver"></select>
@@ -321,7 +325,8 @@ function renderTypes() {
     const on = C.type === t.type;
     return '<button type="button" role="radio" aria-checked="' + on + '" class="opt-row' + (on ? ' on' : '') + '" data-t="' + esc(t.type) + '"' + (full ? ' disabled' : '') + '>' +
       '<span class="radio"></span><span class="grow"><span class="t-strong">' + esc(t.type) + '</span>' +
-      '<span class="t-meta">' + (t.seats ? 'สูงสุด ' + t.seats + ' ที่นั่ง · ' : '') + 'ทั้งหมด ' + t.total + ' คัน</span></span>' +
+      '<span class="t-meta">' + (t.seats ? 'สูงสุด ' + t.seats + ' ที่นั่ง · ' : '') + 'ทั้งหมด ' + t.total + ' คัน</span>' +
+      (C.cars && C.cars[t.type] && C.cars[t.type].length ? '<span class="t-meta" style="color:#1B6337">ว่าง: ' + C.cars[t.type].map(function (c) { return esc(c.plate); }).join(', ') + '</span>' : '') + '</span>' +
       (free === undefined ? '' : full ? '<span class="pill bad">เต็ม</span>' : '<span class="pill ok">ว่าง ' + free + ' คัน</span>') + '</button>';
   }).join('');
   $('typeList').onclick = function (ev) {
@@ -329,13 +334,32 @@ function renderTypes() {
     if (x && !x.disabled) { C.type = x.getAttribute('data-t'); renderTypes(); }
   };
   $('type').value = C.type;
+  renderPlates();
+}
+
+/* เลือกทะเบียนรถจากคันที่ว่างของประเภทที่เลือก */
+function renderPlates() {
+  const list = (C.cars && C.cars[C.type]) || [];
+  $('plateBox').style.display = list.length ? '' : 'none';
+  const keep = $('plate').value;
+  $('plate').innerHTML = list.map(function (c) {
+    return '<option value="' + esc(c.plate) + '">' + esc(c.plate) + (c.model ? ' · ' + esc(c.model) : '') + '</option>';
+  }).join('');
+  if (list.some(function (c) { return c.plate === keep; })) $('plate').value = keep;
 }
 
 async function loadAvailability() {
   renderTypes();
   if (!$('date').value) return;
   try {
-    C.avail = await call('api_availability', $('date').value);
+    try {
+      C.cars = await call('api_freeCars', $('date').value);
+      C.avail = {};
+      S.boot.types.forEach(function (t) { C.avail[t.type] = (C.cars[t.type] || []).length; });
+    } catch (e2) {
+      C.cars = null;
+      C.avail = await call('api_availability', $('date').value);
+    }
     if (C.avail[C.type] === 0) {
       const next = S.boot.types.filter(function (t) { return C.avail[t.type] > 0; })[0];
       if (next) C.type = next.type;
@@ -370,9 +394,10 @@ async function submitBooking() {
   busy(true);
   try {
     const r = await call('api_book', f);
-    toast('ส่งคำขอ ' + r.id + ' เรียบร้อย');
+    toast('จองแล้ว ' + r.id + (r.plate ? ' · รถทะเบียน ' + r.plate : ''));
     ['customer', 'phone', 'pickup', 'dropoff', 'time', 'note', 'purposeDetail'].forEach(function (k) { $(k).value = ''; });
     C.monthCache = {};
+    loadAvailability();
     showTab('my');
     backToChat(1800);
   } catch (e) { handleError(e); } finally { $('submitBtn').disabled = false; busy(false); }
@@ -384,7 +409,9 @@ function bookingCard(b, extra) {
     '<div style="font-size:12px;font-weight:600;color:var(--accent)">' + esc(b.purpose) + (b.purposeDetail ? ' · ' + esc(b.purposeDetail) : '') + '</div>' +
     '<div class="t-strong">คุณ ' + esc(b.customer) + ' · ' + esc(b.phone) + '</div>' +
     '<div class="t-meta">รับ: ' + esc(b.pickup) + ' → ส่ง: ' + esc(b.dropoff) + '</div>' +
-    '<div class="t-meta">' + esc(thDate(b.date)) + ' · ' + esc(b.time) + ' · ' + esc(b.type) + (b.plate ? ' · ' + esc(b.plate) : '') + ' · คนขับ: ' + esc(b.driver) + '</div>' +
+    '<div class="t-meta">' + esc(thDate(b.date)) + ' · ' + esc(b.time) + ' · ' + esc(b.type) + ' · คนขับ: ' + esc(b.driver) + '</div>' +
+    (b.plate ? '<div style="font-size:15px;font-weight:700;color:var(--accent)">🚗 ทะเบียน ' + esc(b.plate) + '</div>' : '') +
+    (b.booker ? '<div class="t-meta">ผู้จอง: ' + esc(b.booker) + '</div>' : '') +
     (extra || '') + '</article>';
 }
 
