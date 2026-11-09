@@ -176,9 +176,10 @@
           <input type="hidden" name="type" id="type">
           <input type="hidden" name="plate" id="plate">
           <div class="field">
-            <label for="driver">คนขับ</label>
-            <select id="driver" name="driver"></select>
-            <span class="hint">เลือก "ไม่ระบุ" เพื่อให้แผนกยานพาหนะจัดให้</span>
+            <label>คนขับ <span class="opt">· เลือกสาขาก่อน</span></label>
+            <div class="chips" id="drvBranch" role="group" aria-label="สาขาของคนขับ"></div>
+            <div id="driverList" role="radiogroup" aria-label="คนขับ" style="display:flex;flex-direction:column;gap:8px"></div>
+            <input type="hidden" id="driver" name="driver" value="ไม่ระบุ">
           </div>
         </div>
 
@@ -277,8 +278,7 @@ startApp(function () {
   $('purposeChips').onclick = function (ev) { const x = ev.target.closest('[data-p]'); if (x) pickPurpose(x.getAttribute('data-p')); };
   pickPurpose(b.purposes[0]);
   // คนขับ
-  $('driver').innerHTML = '<option value="ไม่ระบุ">ไม่ระบุ · ให้แผนกยานพาหนะจัดให้</option>' +
-    b.drivers.map(function (d) { return '<option value="' + esc(d.name) + '">' + esc(d.name) + (d.branch ? ' · ' + esc(d.branch) : '') + '</option>'; }).join('');
+  setupDrivers();
   $('fuel').innerHTML = b.fuel.map(function (f) { return '<option>' + esc(f) + '</option>'; }).join('');
   $('booker').value = S.user.name;
   $('date').min = b.today;
@@ -378,6 +378,35 @@ async function loadAvailability() {
     }
     renderTypes();
   } catch (e) { handleError(e); }
+}
+
+/* คนขับ: เลือกสาขา → แสดงคนขับของสาขานั้น (คนขับ "ทุกสาขา" ขึ้นทุกสาขา) */
+function setupDrivers() {
+  const ds = S.boot.drivers || [];
+  const branches = [];
+  ds.forEach(function (d) { if (d.branch && d.branch !== 'ทุกสาขา' && branches.indexOf(d.branch) < 0) branches.push(d.branch); });
+  C.drvBranch = (S.user && branches.indexOf(S.user.branch) >= 0) ? S.user.branch : (branches[0] || '');
+  C.driver = 'ไม่ระบุ';
+  $('drvBranch').onclick = function (ev) { const x = ev.target.closest('[data-db]'); if (x) { C.drvBranch = x.getAttribute('data-db'); C.driver = 'ไม่ระบุ'; renderDrivers(); } };
+  $('driverList').onclick = function (ev) { const x = ev.target.closest('[data-d]'); if (x) { C.driver = x.getAttribute('data-d'); renderDrivers(); } };
+  C.drvBranches = branches;
+  renderDrivers();
+}
+
+function renderDrivers() {
+  $('drvBranch').innerHTML = C.drvBranches.map(function (b) {
+    return '<button type="button" class="chip' + (b === C.drvBranch ? ' on' : '') + '" data-db="' + esc(b) + '">' + esc(b) + '</button>';
+  }).join('');
+  const list = (S.boot.drivers || []).filter(function (d) { return !C.drvBranch || d.branch === C.drvBranch || d.branch === 'ทุกสาขา' || !d.branch; });
+  const row = function (name, meta) {
+    const on = C.driver === name;
+    return '<button type="button" role="radio" aria-checked="' + on + '" class="opt-row' + (on ? ' on' : '') + '" data-d="' + esc(name) + '">' +
+      '<span class="radio"></span><span class="grow"><span class="t-strong">' + esc(name) + '</span>' + (meta ? '<span class="t-meta">' + esc(meta) + '</span>' : '') + '</span></button>';
+  };
+  $('driverList').innerHTML = list.map(function (d) { return row(d.name, d.branch || ''); }).join('') +
+    row('ไม่ระบุ', 'ให้แผนกยานพาหนะจัดคนขับให้') +
+    (list.length ? '' : '<div class="hint">สาขานี้ยังไม่มีคนขับในชีต Drivers</div>');
+  $('driver').value = C.driver;
 }
 
 /* กันเลือกเวลาที่ผ่านมาแล้วของวันนี้ */
