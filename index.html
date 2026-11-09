@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&display=swap">
+  <style>:root { --accent: #1F5FAD; --accent-soft: #EEF3FA; --accent-tint: #DCE7F5; }</style>
+  <style>
+  :root {
+    --ink: #1B2430; --muted: #5B6675; --line: #E1E6EC; --field: #C7D0DB; --bg: #F3F5F8; --card: #FFFFFF;
+    --ok-bg: #E2F3E8; --ok-fg: #1B6337; --wait-bg: #FCEFD9; --wait-fg: #7A4A00;
+    --bad-bg: #FBE4E2; --bad-fg: #9A2A1F; --done-bg: #ECEEF2; --done-fg: #465061;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--ink); font-family: 'IBM Plex Sans Thai', 'Sarabun', system-ui, sans-serif; -webkit-text-size-adjust: 100%; }
+  button, input, select, textarea { font-family: inherit; font-size: 15px; color: var(--ink); }
+  button { cursor: pointer; }
+  .hero { background: var(--accent); color: #fff; padding: 16px 16px 18px; }
+  .hero small { font-size: 12px; letter-spacing: .04em; }
+  .hero h1 { margin: 2px 0 0; font-size: 21px; }
+  .chip-user { margin-top: 10px; display: inline-flex; align-items: center; gap: 8px; background: #fff; color: var(--ink); padding: 5px 12px 5px 5px; border-radius: 20px; font-size: 12px; max-width: 100%; }
+  .chip-user img, .chip-user span.ph { width: 22px; height: 22px; border-radius: 50%; background: #DCE4EC; flex: none; }
+  nav.tabs { position: sticky; top: 0; z-index: 5; display: flex; background: #fff; border-bottom: 1px solid #DADFE6; overflow-x: auto; }
+  nav.tabs button { flex: 1 0 auto; min-width: 64px; height: 46px; border: 0; border-bottom: 3px solid transparent; background: none; color: var(--muted); font-size: 13px; font-weight: 500; padding: 0 10px; }
+  nav.tabs button.on { color: var(--accent); border-bottom-color: var(--accent); font-weight: 700; }
+  main { padding: 16px; display: flex; flex-direction: column; gap: 14px; max-width: 640px; margin: 0 auto; padding-bottom: 96px; }
+  section[data-tab] { display: none; flex-direction: column; gap: 14px; }
+  section[data-tab].on { display: flex; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+  .card.tight { padding: 12px 14px; gap: 6px; }
+  h2 { margin: 0; font-size: 15px; }
+  h2 .sub { font-weight: 400; font-size: 12px; color: var(--muted); }
+  .field { display: flex; flex-direction: column; gap: 5px; }
+  .field label { font-size: 13px; color: #3F4A58; }
+  .field label .opt { color: var(--muted); }
+  .field input, .field select, .field textarea { height: 44px; border: 1px solid var(--field); border-radius: 10px; padding: 0 12px; background: #fff; width: 100%; }
+  .field textarea { height: auto; min-height: 84px; padding: 10px 12px; resize: vertical; }
+  .field input[readonly] { background: #F7F9FB; }
+  .grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .hint { font-size: 12px; color: var(--muted); }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip { min-height: 40px; padding: 0 14px; border-radius: 20px; border: 1px solid var(--field); background: #fff; font-size: 13px; font-weight: 600; }
+  .chip.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .opt-row { display: flex; align-items: center; gap: 12px; text-align: left; width: 100%; min-height: 52px; padding: 10px 14px; border-radius: 12px; border: 2px solid #D3DAE3; background: #fff; }
+  .opt-row.on { border-color: var(--accent); background: var(--accent-soft); }
+  .opt-row:disabled { background: #F3F4F6; opacity: .6; cursor: not-allowed; }
+  .radio { width: 20px; height: 20px; border-radius: 50%; border: 2px solid #9AA5B4; background: #fff; display: flex; align-items: center; justify-content: center; flex: none; }
+  .opt-row.on .radio { border-color: var(--accent); }
+  .opt-row.on .radio::after { content: ''; width: 10px; height: 10px; border-radius: 50%; background: var(--accent); }
+  .grow { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .t-strong { font-size: 15px; font-weight: 600; }
+  .t-meta { font-size: 12px; color: var(--muted); }
+  .pill { font-size: 12px; font-weight: 600; padding: 2px 9px; border-radius: 10px; white-space: nowrap; }
+  .pill.ok { background: var(--ok-bg); color: var(--ok-fg); }
+  .pill.wait { background: var(--wait-bg); color: var(--wait-fg); }
+  .pill.bad { background: var(--bad-bg); color: var(--bad-fg); }
+  .pill.done { background: var(--done-bg); color: var(--done-fg); }
+  .pill.info { background: var(--accent-tint); color: var(--accent); }
+  .row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .btn { height: 48px; border: 0; border-radius: 12px; background: var(--accent); color: #fff; font-size: 15px; font-weight: 700; padding: 0 16px; }
+  .btn.ghost { background: #fff; color: var(--ink); border: 1px solid var(--field); }
+  .btn.small { height: 40px; font-size: 14px; }
+  .btn:disabled { opacity: .55; }
+  .actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .bar { position: fixed; left: 0; right: 0; bottom: 0; padding: 10px 16px calc(14px + env(safe-area-inset-bottom)); background: #fff; border-top: 1px solid #DADFE6; z-index: 6; display: none; }
+  .bar.on { display: block; }
+  .bar .btn { width: 100%; max-width: 608px; display: block; margin: 0 auto; }
+  .seg { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; background: #E3E8EE; padding: 4px; border-radius: 12px; }
+  .seg button { height: 40px; border: 0; border-radius: 9px; background: transparent; color: #3F4A58; font-weight: 600; font-size: 14px; }
+  .seg button.on { background: #fff; color: var(--accent); }
+  .navrow { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .navrow h2 { text-align: center; font-size: 15px; }
+  .iconbtn { width: 44px; height: 44px; border: 1px solid #D3DAE3; background: #fff; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex: none; }
+  .cal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+  .cal .dow { font-size: 11px; color: var(--muted); text-align: center; }
+  .cal button { min-height: 58px; border-radius: 10px; border: 1px solid #E3E8EE; background: #fff; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 6px 2px; font-size: 13px; font-weight: 500; }
+  .cal button.has { background: var(--accent-soft); }
+  .cal button.today { border: 2px solid var(--accent); font-weight: 700; }
+  .cal button.sel { background: var(--accent); color: #fff; border-color: var(--accent); font-weight: 700; }
+  .cal button .n { font-size: 9px; font-weight: 600; }
+  .cal .blank { visibility: hidden; }
+  .stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+  .stat { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 8px 4px; text-align: center; }
+  .stat b { display: block; font-size: 18px; }
+  .stat span { font-size: 11px; color: var(--muted); }
+  .list-item { display: flex; gap: 12px; padding: 10px 0; border-bottom: 1px solid #EEF1F5; align-items: center; }
+  .list-item:last-child { border-bottom: 0; }
+  .empty { text-align: center; color: var(--muted); font-size: 13px; padding: 18px 8px; }
+  .foot { font-size: 11px; color: var(--muted); text-align: center; padding: 4px 16px 20px; }
+  #toast { position: fixed; left: 50%; bottom: 90px; transform: translateX(-50%); background: #1B2430; color: #fff; padding: 10px 16px; border-radius: 12px; font-size: 14px; z-index: 50; max-width: 90vw; display: none; }
+  #toast.bad { background: #9A2A1F; }
+  #busy { position: fixed; inset: 0; background: rgba(255,255,255,.6); z-index: 40; display: none; align-items: center; justify-content: center; }
+  #busy.on { display: flex; }
+  #busy i { width: 34px; height: 34px; border-radius: 50%; border: 4px solid #D3DAE3; border-top-color: var(--accent); animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  #fatal { display: none; min-height: 100vh; align-items: center; justify-content: center; padding: 24px; text-align: center; flex-direction: column; gap: 12px; }
+  #fatal.on { display: flex; }
+  #fatal h2 { font-size: 18px; }
+  #fatal p { color: var(--muted); font-size: 14px; line-height: 1.6; max-width: 320px; }
+  .hidden { display: none !important; }
+</style>
+
+  <style>
+    /* ตัวหนังสือใหญ่ขึ้นทั้งหน้า */
+    button, input, select, textarea { font-size: 17px; }
+    .hero small { font-size: 14px; }
+    .hero h1 { font-size: 24px; }
+    .chip-user { font-size: 15px; }
+    .chip-user img, .chip-user span.ph { width: 26px; height: 26px; }
+    nav.tabs button { font-size: 15px; height: 50px; }
+    h2 { font-size: 18px; }
+    h2 .sub { font-size: 14px; }
+    .field label { font-size: 15px; }
+    .field input, .field select, .field textarea { height: 50px; }
+    .hint { font-size: 14px; }
+    .chip { font-size: 15px; min-height: 44px; }
+    .t-strong { font-size: 17px; }
+    .t-meta { font-size: 14px; }
+    .pill { font-size: 13px; }
+    .btn { font-size: 17px; height: 52px; }
+    .btn.small { font-size: 16px; height: 46px; }
+    .stat b { font-size: 22px; }
+    .stat span { font-size: 13px; }
+    .cal .dow { font-size: 13px; }
+    .cal button { font-size: 15px; }
+    .cal button .n { font-size: 11px; }
+    .empty { font-size: 15px; }
+    .foot { font-size: 12px; }
+    #toast { font-size: 16px; }
+    legend { font-size: 15px; }
+    .tile b { font-size: 20px; }
+    .tile span { font-size: 13px; }
+    .tag { font-size: 12px; }
+    article.bk { gap: 8px; }
+    article.bk .t-strong { font-size: 20px; }
+    article.bk .t-meta { font-size: 16px; line-height: 1.5; }
+    article.bk .pill { font-size: 15px; padding: 3px 11px; }
+  </style>
+
+  <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+</head>
+<body>
+<div id="app">
+  <div class="hero">
+    <small>โรงพยาบาล DERMASTER</small>
+    <h1>ระบบจองรถส่วนกลาง</h1>
+    <div class="chip-user" id="userChip"><span class="ph"></span><span>กำลังโหลด…</span></div>
+  </div>
+  <nav class="tabs" id="tabs" aria-label="เมนู"></nav>
+
+  <main>
+    <!-- จองรถ -->
+    <section data-tab="book">
+      <form id="bookForm" autocomplete="off" onsubmit="return false">
+        <div class="card">
+          <h2>1. จุดประสงค์ของการใช้รถ</h2>
+          <div class="chips" id="purposeChips" role="group" aria-label="จุดประสงค์"></div>
+          <input type="hidden" name="purpose" id="purpose">
+          <div class="field">
+            <label for="purposeDetail" id="purposeDetailLabel">รายละเอียดเพิ่มเติม <span class="opt">(ไม่บังคับ)</span></label>
+            <input id="purposeDetail" name="purposeDetail" maxlength="200" placeholder="เช่น รับลูกค้ามาทำหัตถการ / ส่งกลับที่พัก">
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>2. ประเภทรถ <span class="sub">· จำนวนว่างตามวันที่เลือก</span></h2>
+          <div id="typeList" role="radiogroup" aria-label="ประเภทรถ" style="display:flex;flex-direction:column;gap:8px"></div>
+          <input type="hidden" name="type" id="type">
+          <div class="field">
+            <label for="driver">คนขับ</label>
+            <select id="driver" name="driver"></select>
+            <span class="hint">เลือก "ไม่ระบุ" เพื่อให้แผนกยานพาหนะจัดให้</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>3. ข้อมูลลูกค้า</h2>
+          <div class="field"><label for="customer">ชื่อลูกค้า</label><input id="customer" name="customer" maxlength="120" placeholder="ชื่อ-นามสกุลลูกค้า" required></div>
+          <div class="field"><label for="phone">เบอร์โทร</label><input id="phone" name="phone" type="tel" inputmode="tel" maxlength="15" placeholder="08x-xxx-xxxx" required></div>
+        </div>
+
+        <div class="card">
+          <h2>4. รับ-ส่ง</h2>
+          <div class="field"><label for="pickup">สถานที่รับ</label><input id="pickup" name="pickup" maxlength="300" placeholder="ที่อยู่ / จุดสังเกต / ลิงก์ Google Maps" required></div>
+          <div class="field"><label for="dropoff">สถานที่ส่ง</label><input id="dropoff" name="dropoff" maxlength="300" placeholder="เช่น Dermaster สาขา …" required></div>
+          <div class="grid2">
+            <div class="field"><label for="date">วัน</label><input id="date" name="date" type="date" required></div>
+            <div class="field"><label for="time">เวลา</label><input id="time" name="time" type="time" required></div>
+          </div>
+          <div class="field"><label for="note">Note <span class="opt">(ไม่บังคับ)</span></label><textarea id="note" name="note" maxlength="500" placeholder="เช่น ลูกค้าใช้รถเข็น รอรับกลับหลังทำหัตถการ"></textarea></div>
+        </div>
+
+        <div class="card">
+          <div class="field"><label for="booker">ชื่อผู้จอง</label><input id="booker" name="booker" maxlength="120" required></div>
+        </div>
+      </form>
+    </section>
+
+    <!-- การจองของฉัน -->
+    <section data-tab="my"><div id="myList"></div></section>
+
+    <!-- ตารางรถ -->
+    <section data-tab="schedule">
+      <div class="seg" role="group" aria-label="มุมมองตาราง">
+        <button type="button" id="viewDay" class="on">รายวัน</button>
+        <button type="button" id="viewMonth">รายเดือน</button>
+      </div>
+      <div id="dayView">
+        <div class="navrow">
+          <button type="button" class="iconbtn" id="dayPrev" aria-label="วันก่อนหน้า">‹</button>
+          <h2 id="dayTitle"></h2>
+          <button type="button" class="iconbtn" id="dayNext" aria-label="วันถัดไป">›</button>
+        </div>
+        <div class="card" id="dayList" style="margin-top:12px"></div>
+      </div>
+      <div id="monthView" class="hidden">
+        <div class="navrow">
+          <button type="button" class="iconbtn" id="monPrev" aria-label="เดือนก่อนหน้า">‹</button>
+          <h2 id="monTitle"></h2>
+          <button type="button" class="iconbtn" id="monNext" aria-label="เดือนถัดไป">›</button>
+        </div>
+        <div class="stats" id="monStats" style="margin-top:12px"></div>
+        <div class="card" style="margin-top:12px"><div class="cal" id="monGrid"></div></div>
+        <p class="hint">แตะวันที่เพื่อดูตารางรายวัน</p>
+      </div>
+    </section>
+
+    <!-- คืนรถ -->
+    <section data-tab="return">
+      <form class="card" id="returnForm" onsubmit="return false">
+        <h2>บันทึกการคืนรถ</h2>
+        <div class="field"><label for="retId">การจอง</label><select id="retId" name="id"></select></div>
+        <div class="grid2">
+          <div class="field"><label for="m1">เลขไมล์ออก <span class="opt">(ไม่บังคับ)</span></label><input id="m1" name="m1" type="number" inputmode="numeric" min="0" placeholder="กม."></div>
+          <div class="field"><label for="m2">เลขไมล์กลับ <span class="opt">(ไม่บังคับ)</span></label><input id="m2" name="m2" type="number" inputmode="numeric" min="0" placeholder="กม."></div>
+        </div>
+        <div class="field"><label for="fuel">ระดับน้ำมันตอนคืน</label><select id="fuel" name="fuel"></select></div>
+        <div class="field"><label for="photo">รูปหน้าปัดเลขไมล์ <span class="opt">(ไม่บังคับ)</span></label><input id="photo" type="file" accept="image/*" style="height:auto;padding:10px"></div>
+        <button type="button" class="btn" id="returnBtn">บันทึกการคืนรถ</button>
+      </form>
+    </section>
+
+    <!-- อนุมัติ -->
+    <section data-tab="approve">
+      <p class="hint">คำขอที่รอคุณอนุมัติ (Role = Approver ในชีต Users)</p>
+      <div id="approveList"></div>
+    </section>
+  </main>
+  <div class="foot">เชื่อมข้อมูลกับ Google Sheet · Car_Booking</div>
+  <div class="bar" data-for="book"><button type="button" class="btn" id="submitBtn">ส่งคำขอจองรถ</button></div>
+</div>
+
+<div id="fatal"><h2 id="fatalTitle"></h2><p id="fatalText"></p></div>
+<div id="busy"><i></i></div>
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<script src="core.js"></script>
+<script>
+const C = { purpose: '', type: '', avail: {}, schedView: 'day', day: ymd(new Date()), calY: new Date().getFullYear(), calM: new Date().getMonth(), monthCache: {} };
+
+startApp(function () {
+  const b = S.boot;
+  setupTabs([['book', 'จองรถ'], ['my', 'ของฉัน'], ['schedule', 'ตารางรถ'], ['return', 'คืนรถ'], ['approve', 'อนุมัติ', false]], BOOT.page);
+  // จุดประสงค์
+  $('purposeChips').innerHTML = b.purposes.map(function (p) { return '<button type="button" class="chip" data-p="' + esc(p) + '">' + esc(p) + '</button>'; }).join('');
+  $('purposeChips').onclick = function (ev) { const x = ev.target.closest('[data-p]'); if (x) pickPurpose(x.getAttribute('data-p')); };
+  pickPurpose(b.purposes[0]);
+  // คนขับ
+  $('driver').innerHTML = '<option value="ไม่ระบุ">ไม่ระบุ · ให้แผนกยานพาหนะจัดให้</option>' +
+    b.drivers.map(function (d) { return '<option value="' + esc(d.name) + '">' + esc(d.name) + (d.branch ? ' · ' + esc(d.branch) : '') + '</option>'; }).join('');
+  $('fuel').innerHTML = b.fuel.map(function (f) { return '<option>' + esc(f) + '</option>'; }).join('');
+  $('booker').value = S.user.name;
+  $('date').min = b.today;
+  $('date').value = b.today;
+  $('date').onchange = loadAvailability;
+  C.type = (b.types[0] || {}).type || '';
+  loadAvailability();
+
+  $('submitBtn').onclick = submitBooking;
+  $('returnBtn').onclick = submitReturn;
+  $('viewDay').onclick = function () { setSchedView('day'); };
+  $('viewMonth').onclick = function () { setSchedView('month'); };
+  $('dayPrev').onclick = function () { C.day = shiftDay(C.day, -1); renderDay(); };
+  $('dayNext').onclick = function () { C.day = shiftDay(C.day, 1); renderDay(); };
+  $('monPrev').onclick = function () { shiftMonth(-1); };
+  $('monNext').onclick = function () { shiftMonth(1); };
+  TABS.onShow.my = loadMy;
+  TABS.onShow.schedule = function () { return C.schedView === 'day' ? renderDay() : renderMonthView(); };
+  TABS.onShow.return = loadReturnables;
+  TABS.onShow.approve = loadPending;
+  if (TABS.onShow[TABS.current]) return TABS.onShow[TABS.current]();
+});
+
+function pickPurpose(p) {
+  C.purpose = p;
+  $('purpose').value = p;
+  document.querySelectorAll('#purposeChips .chip').forEach(function (c) { c.classList.toggle('on', c.getAttribute('data-p') === p); });
+  const other = p === 'อื่น ๆ';
+  $('purposeDetailLabel').innerHTML = other ? 'ระบุจุดประสงค์ <span class="opt">(จำเป็น)</span>' : 'รายละเอียดเพิ่มเติม <span class="opt">(ไม่บังคับ)</span>';
+  $('purposeDetail').required = other;
+}
+
+function renderTypes() {
+  const list = S.boot.types;
+  if (!list.length) { $('typeList').innerHTML = '<div class="empty">ยังไม่มีรถในชีต Vehicles ที่สถานะ Active</div>'; return; }
+  $('typeList').innerHTML = list.map(function (t) {
+    const free = C.avail[t.type];
+    const full = free === 0;
+    const on = C.type === t.type;
+    return '<button type="button" role="radio" aria-checked="' + on + '" class="opt-row' + (on ? ' on' : '') + '" data-t="' + esc(t.type) + '"' + (full ? ' disabled' : '') + '>' +
+      '<span class="radio"></span><span class="grow"><span class="t-strong">' + esc(t.type) + '</span>' +
+      '<span class="t-meta">' + (t.seats ? 'สูงสุด ' + t.seats + ' ที่นั่ง · ' : '') + 'ทั้งหมด ' + t.total + ' คัน</span></span>' +
+      (free === undefined ? '' : full ? '<span class="pill bad">เต็ม</span>' : '<span class="pill ok">ว่าง ' + free + ' คัน</span>') + '</button>';
+  }).join('');
+  $('typeList').onclick = function (ev) {
+    const x = ev.target.closest('[data-t]');
+    if (x && !x.disabled) { C.type = x.getAttribute('data-t'); renderTypes(); }
+  };
+  $('type').value = C.type;
+}
+
+async function loadAvailability() {
+  renderTypes();
+  if (!$('date').value) return;
+  try {
+    C.avail = await call('api_availability', $('date').value);
+    if (C.avail[C.type] === 0) {
+      const next = S.boot.types.filter(function (t) { return C.avail[t.type] > 0; })[0];
+      if (next) C.type = next.type;
+    }
+    renderTypes();
+  } catch (e) { handleError(e); }
+}
+
+async function submitBooking() {
+  const f = formData($('bookForm'));
+  f.type = C.type;
+  f.purpose = C.purpose;
+  const form = $('bookForm');
+  if (!form.reportValidity()) return;
+  if (!f.type) return toast('กรุณาเลือกประเภทรถ', true);
+  $('submitBtn').disabled = true;
+  busy(true);
+  try {
+    const r = await call('api_book', f);
+    toast('ส่งคำขอ ' + r.id + ' เรียบร้อย');
+    ['customer', 'phone', 'pickup', 'dropoff', 'time', 'note', 'purposeDetail'].forEach(function (k) { $(k).value = ''; });
+    C.monthCache = {};
+    showTab('my');
+    backToChat(1800);
+  } catch (e) { handleError(e); } finally { $('submitBtn').disabled = false; busy(false); }
+}
+
+function bookingCard(b, extra) {
+  return '<article class="card tight">' +
+    '<div class="row"><span class="t-meta">' + esc(b.id) + '</span>' + statusPill(b.status) + '</div>' +
+    '<div style="font-size:12px;font-weight:600;color:var(--accent)">' + esc(b.purpose) + (b.purposeDetail ? ' · ' + esc(b.purposeDetail) : '') + '</div>' +
+    '<div class="t-strong">คุณ ' + esc(b.customer) + ' · ' + esc(b.phone) + '</div>' +
+    '<div class="t-meta">รับ: ' + esc(b.pickup) + ' → ส่ง: ' + esc(b.dropoff) + '</div>' +
+    '<div class="t-meta">' + esc(thDate(b.date)) + ' · ' + esc(b.time) + ' · ' + esc(b.type) + (b.plate ? ' · ' + esc(b.plate) : '') + ' · คนขับ: ' + esc(b.driver) + '</div>' +
+    (extra || '') + '</article>';
+}
+
+async function loadMy() {
+  $('myList').innerHTML = '<div class="empty">กำลังโหลด…</div>';
+  const list = await call('api_myBookings');
+  if (!list.length) { $('myList').innerHTML = '<div class="empty">ยังไม่มีการจอง</div>'; return; }
+  $('myList').innerHTML = list.map(function (b) {
+    const canCancel = b.status === 'รออนุมัติ' || b.status === 'อนุมัติแล้ว';
+    return bookingCard(b, canCancel ? '<button type="button" class="btn ghost small" data-cancel="' + esc(b.id) + '">ยกเลิกการจอง</button>' : '');
+  }).join('<div style="height:10px"></div>');
+  $('myList').onclick = async function (ev) {
+    const x = ev.target.closest('[data-cancel]');
+    if (!x) return;
+    busy(true);
+    try { await call('api_cancel', x.getAttribute('data-cancel')); toast('ยกเลิกแล้ว'); C.monthCache = {}; await loadMy(); } catch (e) { handleError(e); } finally { busy(false); }
+  };
+}
+
+/* ----- ตารางรถ ----- */
+function setSchedView(v) {
+  C.schedView = v;
+  $('viewDay').classList.toggle('on', v === 'day');
+  $('viewMonth').classList.toggle('on', v === 'month');
+  $('dayView').classList.toggle('hidden', v !== 'day');
+  $('monthView').classList.toggle('hidden', v !== 'month');
+  if (v === 'month') { const d = parseYmd(C.day); C.calY = d.getFullYear(); C.calM = d.getMonth(); renderMonthView(); } else renderDay();
+}
+
+async function monthData(y, m) {
+  const key = y + '-' + m;
+  if (!C.monthCache[key]) C.monthCache[key] = await call('api_schedule', y, m + 1);
+  return C.monthCache[key];
+}
+
+async function renderDay() {
+  $('dayTitle').textContent = thDayLabel(C.day);
+  $('dayList').innerHTML = '<div class="empty">กำลังโหลด…</div>';
+  const d = parseYmd(C.day);
+  const list = (await monthData(d.getFullYear(), d.getMonth())).filter(function (b) { return b.date === C.day; });
+  if (!list.length) { $('dayList').innerHTML = '<div class="empty">ไม่มีงานรถในวันนี้ · รถว่างทุกคัน</div>'; return; }
+  const groups = {};
+  list.forEach(function (b) { (groups[b.type] = groups[b.type] || []).push(b); });
+  $('dayList').innerHTML = Object.keys(groups).map(function (t) {
+    return '<h2>' + esc(t) + ' <span class="sub">· ' + groups[t].length + ' งาน</span></h2>' + groups[t].map(function (b) {
+      return '<div class="list-item"><b style="width:52px;color:var(--accent)">' + esc(b.time) + '</b>' +
+        '<span class="grow"><span style="font-size:14px;font-weight:600">' + esc(b.purpose) + '</span>' +
+        '<span class="t-meta">' + (b.plate ? esc(b.plate) + ' · ' : '') + 'คนขับ: ' + esc(b.driver || 'ไม่ระบุ') + '</span></span>' + statusPill(b.status) + '</div>';
+    }).join('');
+  }).join('');
+}
+
+async function renderMonthView() {
+  $('monTitle').textContent = monthTitle(C.calY, C.calM);
+  const list = await monthData(C.calY, C.calM);
+  const byDay = {}, byType = {};
+  list.forEach(function (b) { byDay[b.date] = (byDay[b.date] || 0) + 1; byType[b.type] = (byType[b.type] || 0) + 1; });
+  const types = S.boot.types.map(function (t) { return t.type; }).slice(0, 3);
+  $('monStats').innerHTML = '<div class="stat"><b>' + list.length + '</b><span>งานทั้งเดือน</span></div>' +
+    types.map(function (t) { return '<div class="stat"><b>' + (byType[t] || 0) + '</b><span>' + esc(t) + '</span></div>'; }).join('');
+  renderMonth($('monGrid'), C.calY, C.calM, C.day, function (ds) {
+    const n = byDay[ds] || 0;
+    return { has: n > 0, label: n ? n + ' งาน' : '' };
+  }, function (ds) { C.day = ds; setSchedView('day'); });
+}
+
+function shiftMonth(k) {
+  C.calM += k;
+  if (C.calM < 0) { C.calM = 11; C.calY -= 1; }
+  if (C.calM > 11) { C.calM = 0; C.calY += 1; }
+  renderMonthView().catch(handleError);
+}
+
+/* ----- คืนรถ ----- */
+async function loadReturnables() {
+  const list = await call('api_returnables');
+  $('retId').innerHTML = list.length ? list.map(function (b) {
+    return '<option value="' + esc(b.id) + '">' + esc(b.id) + ' · ' + esc(thDate(b.date)) + ' · ' + esc(b.type) + (b.plate ? ' · ' + esc(b.plate) : '') + '</option>';
+  }).join('') : '<option value="">ไม่มีการจองที่รอคืนรถ</option>';
+  $('returnBtn').disabled = !list.length;
+}
+
+function readPhoto(file) {
+  return new Promise(function (resolve, reject) {
+    if (!file) return resolve(null);
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = function () {
+      const max = 1600, k = Math.min(1, max / Math.max(img.width, img.height));
+      const cv = document.createElement('canvas');
+      cv.width = Math.round(img.width * k); cv.height = Math.round(img.height * k);
+      cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
+      URL.revokeObjectURL(url);
+      resolve({ mime: 'image/jpeg', b64: cv.toDataURL('image/jpeg', 0.8).split(',')[1] });
+    };
+    img.onerror = function () { reject(new Error('อ่านรูปไม่สำเร็จ')); };
+    img.src = url;
+  });
+}
+
+async function submitReturn() {
+  const f = formData($('returnForm'));
+  if (!f.id) return toast('ไม่มีการจองให้บันทึก', true);
+  busy(true);
+  try {
+    f.photo = await readPhoto($('photo').files[0]);
+    await call('api_return', f);
+    toast('บันทึกการคืนรถแล้ว');
+    $('returnForm').reset();
+    C.monthCache = {};
+    await loadReturnables();
+  } catch (e) { handleError(e); } finally { busy(false); }
+}
+
+/* ----- อนุมัติ ----- */
+async function loadPending() {
+  $('approveList').innerHTML = '<div class="empty">กำลังโหลด…</div>';
+  const list = await call('api_pending');
+  if (!list.length) { $('approveList').innerHTML = '<div class="empty">ไม่มีคำขอที่รออนุมัติ</div>'; return; }
+  $('approveList').innerHTML = list.map(function (b) {
+    return '<article class="card tight">' +
+      '<div class="t-meta">' + esc(b.who) + ' · ' + esc(b.id) + '</div>' +
+      '<div style="background:#F3F6FA;border-radius:10px;padding:8px 10px;display:flex;flex-direction:column;gap:2px">' +
+      '<span class="t-meta">จุดประสงค์</span><span style="font-size:15px;font-weight:700;color:var(--accent)">' + esc(b.purpose) + '</span>' +
+      (b.purposeDetail ? '<span style="font-size:13px">' + esc(b.purposeDetail) + '</span>' : '') + '</div>' +
+      '<div class="t-meta">' + esc(thDate(b.date)) + ' · ' + esc(b.time) + ' · ' + esc(b.type) + ' · คนขับ: ' + esc(b.driver) + '</div>' +
+      '<div class="t-meta">รับ: ' + esc(b.pickup) + ' → ส่ง: ' + esc(b.dropoff) + '</div>' +
+      '<div class="actions"><button type="button" class="btn ghost small" data-no="' + esc(b.id) + '">ไม่อนุมัติ</button>' +
+      '<button type="button" class="btn small" data-yes="' + esc(b.id) + '">อนุมัติ</button></div></article>';
+  }).join('<div style="height:10px"></div>');
+  $('approveList').onclick = async function (ev) {
+    const yes = ev.target.closest('[data-yes]'), no = ev.target.closest('[data-no]');
+    if (!yes && !no) return;
+    const id = (yes || no).getAttribute(yes ? 'data-yes' : 'data-no');
+    
+    busy(true);
+    try { await call('api_decide', id, !!yes); toast(yes ? 'อนุมัติแล้ว · แจ้งผู้ขอทาง LINE แล้ว' : 'ไม่อนุมัติ · แจ้งผู้ขอทาง LINE แล้ว'); C.monthCache = {}; await loadPending(); } catch (e) { handleError(e); } finally { busy(false); }
+  };
+}
+</script>
+</body>
+</html>
