@@ -100,6 +100,8 @@
   #fatal h2 { font-size: 18px; }
   #fatal p { color: var(--muted); font-size: 14px; line-height: 1.6; max-width: 320px; }
   .hidden { display: none !important; }
+  .tag { display: inline-block; font-weight: 700; padding: 1px 7px; border-radius: 8px; background: var(--accent-tint); color: var(--accent); margin: 2px 4px 0 0; }
+  .tag.past { background: #ECEEF2; color: #465061; }
 </style>
 
   <style>
@@ -213,7 +215,8 @@
           <h2 id="dayTitle"></h2>
           <button type="button" class="iconbtn" id="dayNext" aria-label="วันถัดไป">›</button>
         </div>
-        <div class="card" id="dayList" style="margin-top:12px"></div>
+        <div class="stats" id="dayStats" style="margin-top:12px"></div>
+        <div class="card tight" id="dayList" style="margin-top:12px"></div>
       </div>
       <div id="monthView" class="hidden">
         <div class="navrow">
@@ -401,16 +404,31 @@ async function renderDay() {
   $('dayList').innerHTML = '<div class="empty">กำลังโหลด…</div>';
   const d = parseYmd(C.day);
   const list = (await monthData(d.getFullYear(), d.getMonth())).filter(function (b) { return b.date === C.day; });
-  if (!list.length) { $('dayList').innerHTML = '<div class="empty">ไม่มีงานรถในวันนี้ · รถว่างทุกคัน</div>'; return; }
-  const groups = {};
-  list.forEach(function (b) { (groups[b.type] = groups[b.type] || []).push(b); });
-  $('dayList').innerHTML = Object.keys(groups).map(function (t) {
-    return '<h2>' + esc(t) + ' <span class="sub">· ' + groups[t].length + ' งาน</span></h2>' + groups[t].map(function (b) {
-      return '<div class="list-item"><b style="width:52px;color:var(--accent)">' + esc(b.time) + '</b>' +
-        '<span class="grow"><span style="font-size:14px;font-weight:600">' + esc(b.purpose) + '</span>' +
-        '<span class="t-meta">' + (b.plate ? esc(b.plate) + ' · ' : '') + 'คนขับ: ' + esc(b.driver || 'ไม่ระบุ') + '</span></span>' + statusPill(b.status) + '</div>';
-    }).join('');
-  }).join('');
+  const types = S.boot.types;
+  const isPast = C.day < S.boot.today;
+  let total = 0, used = 0;
+  const rows = types.map(function (t) {
+    const items = list.filter(function (b) { return b.type === t.type; }).sort(function (a, b) { return String(a.time).localeCompare(String(b.time)); });
+    const u = Math.min(items.length, t.total), free = Math.max(0, t.total - items.length);
+    total += t.total; used += u;
+    const jobs = items.map(function (b) {
+      return '<span class="' + (isPast ? 'tag past' : 'tag') + '">' + esc(b.time) + '</span><span style="font-size:13px">' + esc(b.purpose) +
+        (b.plate ? ' · ' + esc(b.plate) : '') + ' · คนขับ: ' + esc(b.driver || 'ไม่ระบุ') + '</span>';
+    }).join('<br>');
+    const pill = free === 0 ? '<span class="pill bad">เต็ม</span>' : '<span class="pill ok">ว่าง ' + free + '/' + t.total + '</span>';
+    return '<div class="list-item"><span class="grow"><span style="font-size:16px;font-weight:700">' + esc(t.type) +
+      ' <span class="t-meta" style="font-weight:400">· ' + t.total + ' คัน</span></span>' +
+      (jobs ? '<span>' + jobs + '</span>' : '<span class="t-meta">—</span>') + '</span>' + pill + '</div>';
+  });
+  // งานของประเภทรถที่ไม่มีในชีต Vehicles แล้ว
+  const known = types.map(function (t) { return t.type; });
+  const other = list.filter(function (b) { return known.indexOf(b.type) < 0; });
+  $('dayStats').innerHTML = '<div class="stat"><b style="color:var(--accent)">' + list.length + '</b><span>งานวันนี้</span></div>' +
+    '<div class="stat"><b>' + total + '</b><span>รถทั้งหมด</span></div>' +
+    '<div class="stat"><b>' + used + '</b><span>ใช้งาน</span></div>' +
+    '<div class="stat"><b style="color:#1B6337">' + (total - used) + '</b><span>ว่าง</span></div>';
+  $('dayList').innerHTML = rows.length ? rows.join('') + (other.length ? '<div class="t-meta">งานประเภทอื่น ' + other.length + ' งาน</div>' : '') :
+    '<div class="empty">ยังไม่มีรถในชีต Vehicles ที่สถานะ Active</div>';
 }
 
 async function renderMonthView() {
