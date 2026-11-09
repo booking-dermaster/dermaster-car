@@ -102,10 +102,6 @@
   .hidden { display: none !important; }
   .tag { display: inline-block; font-weight: 700; padding: 1px 7px; border-radius: 8px; background: var(--accent-tint); color: var(--accent); margin: 2px 4px 0 0; }
   .tag.past { background: #ECEEF2; color: #465061; }
-  /* iOS: ช่องวัน/เวลาไม่ล้นกรอบ */
-  .grid2 > .field { min-width: 0; }
-  .field input[type=date], .field input[type=time] { -webkit-appearance: none; appearance: none; display: block; min-width: 0; max-width: 100%; height: 50px; line-height: 50px; padding-top: 0; padding-bottom: 0; text-align: center; }
-  .field input::-webkit-date-and-time-value { text-align: center; line-height: 50px; margin: 0; }
 </style>
 
   <style>
@@ -171,15 +167,13 @@
         </div>
 
         <div class="card">
-          <h2>2. เลือกรถ <span class="sub">· สถานะตามวันที่เลือก</span></h2>
+          <h2>2. ประเภทรถ <span class="sub">· จำนวนว่างตามวันที่เลือก</span></h2>
           <div id="typeList" role="radiogroup" aria-label="ประเภทรถ" style="display:flex;flex-direction:column;gap:8px"></div>
           <input type="hidden" name="type" id="type">
-          <input type="hidden" name="plate" id="plate">
           <div class="field">
-            <label>คนขับ <span class="opt">· เลือกสาขาก่อน</span></label>
-            <div class="chips" id="drvBranch" role="group" aria-label="สาขาของคนขับ"></div>
-            <div id="driverList" role="radiogroup" aria-label="คนขับ" style="display:flex;flex-direction:column;gap:8px"></div>
-            <input type="hidden" id="driver" name="driver" value="ไม่ระบุ">
+            <label for="driver">คนขับ</label>
+            <select id="driver" name="driver"></select>
+            <span class="hint">เลือก "ไม่ระบุ" เพื่อให้แผนกยานพาหนะจัดให้</span>
           </div>
         </div>
 
@@ -278,14 +272,13 @@ startApp(function () {
   $('purposeChips').onclick = function (ev) { const x = ev.target.closest('[data-p]'); if (x) pickPurpose(x.getAttribute('data-p')); };
   pickPurpose(b.purposes[0]);
   // คนขับ
-  setupDrivers();
+  $('driver').innerHTML = '<option value="ไม่ระบุ">ไม่ระบุ · ให้แผนกยานพาหนะจัดให้</option>' +
+    b.drivers.map(function (d) { return '<option value="' + esc(d.name) + '">' + esc(d.name) + (d.branch ? ' · ' + esc(d.branch) : '') + '</option>'; }).join('');
   $('fuel').innerHTML = b.fuel.map(function (f) { return '<option>' + esc(f) + '</option>'; }).join('');
   $('booker').value = S.user.name;
   $('date').min = b.today;
   $('date').value = b.today;
-  $('date').onchange = function () { syncTimeMin(); loadAvailability(); };
-  $('time').onchange = syncTimeMin;
-  syncTimeMin();
+  $('date').onchange = loadAvailability;
   C.type = (b.types[0] || {}).type || '';
   loadAvailability();
 
@@ -313,9 +306,7 @@ function pickPurpose(p) {
   $('purposeDetail').required = other;
 }
 
-/* รายการรถทีละคัน (ทะเบียน) — ใช้ api_cars; ถ้า backend เก่าจะกลับไปแสดงแบบรายประเภท */
 function renderTypes() {
-  if (C.list) return renderCars();
   const list = S.boot.types;
   if (!list.length) { $('typeList').innerHTML = '<div class="empty">ยังไม่มีรถในชีต Vehicles ที่สถานะ Active</div>'; return; }
   $('typeList').innerHTML = list.map(function (t) {
@@ -332,114 +323,35 @@ function renderTypes() {
     if (x && !x.disabled) { C.type = x.getAttribute('data-t'); renderTypes(); }
   };
   $('type').value = C.type;
-  $('plate').value = '';
-}
-
-function renderCars() {
-  const list = C.list;
-  if (!list.length) { $('typeList').innerHTML = '<div class="empty">ยังไม่มีรถในชีต Vehicles ที่สถานะ Active</div>'; return; }
-  $('typeList').innerHTML = list.map(function (c) {
-    const on = C.plate === c.plate;
-    return '<button type="button" role="radio" aria-checked="' + on + '" class="opt-row' + (on ? ' on' : '') + '" data-plate="' + esc(c.plate) + '"' + (c.free ? '' : ' disabled') + '>' +
-      '<span class="radio"></span><span class="grow"><span class="t-strong">' + esc(c.plate) + '</span>' +
-      '<span class="t-meta">' + esc(c.type) + (c.model ? ' · ' + esc(c.model) : '') + (c.seats ? ' · ' + c.seats + ' ที่นั่ง' : '') + '</span></span>' +
-      (c.free ? '<span class="pill ok">ว่าง</span>' : '<span class="pill bad">ไม่ว่าง</span>') + '</button>';
-  }).join('');
-  $('typeList').onclick = function (ev) {
-    const x = ev.target.closest('[data-plate]');
-    if (x && !x.disabled) { pickCar(x.getAttribute('data-plate')); renderCars(); }
-  };
-}
-
-function pickCar(plate) {
-  const c = (C.list || []).filter(function (x) { return x.plate === plate; })[0];
-  C.plate = c ? c.plate : '';
-  C.type = c ? c.type : '';
-  $('plate').value = C.plate;
-  $('type').value = C.type;
 }
 
 async function loadAvailability() {
   renderTypes();
   if (!$('date').value) return;
   try {
-    try {
-      C.list = await call('api_cars', $('date').value);
-      const cur = C.list.filter(function (x) { return x.plate === C.plate && x.free; })[0];
-      const first = C.list.filter(function (x) { return x.free; })[0];
-      pickCar(cur ? cur.plate : first ? first.plate : '');
-    } catch (e2) {
-      C.list = null;
-      C.avail = await call('api_availability', $('date').value);
-      if (C.avail[C.type] === 0) {
-        const next = S.boot.types.filter(function (t) { return C.avail[t.type] > 0; })[0];
-        if (next) C.type = next.type;
-      }
+    C.avail = await call('api_availability', $('date').value);
+    if (C.avail[C.type] === 0) {
+      const next = S.boot.types.filter(function (t) { return C.avail[t.type] > 0; })[0];
+      if (next) C.type = next.type;
     }
     renderTypes();
   } catch (e) { handleError(e); }
 }
 
-/* คนขับ: เลือกสาขา → แสดงคนขับของสาขานั้น (คนขับ "ทุกสาขา" ขึ้นทุกสาขา) */
-function setupDrivers() {
-  const ds = S.boot.drivers || [];
-  const branches = [];
-  ds.forEach(function (d) { if (d.branch && d.branch !== 'ทุกสาขา' && branches.indexOf(d.branch) < 0) branches.push(d.branch); });
-  C.drvBranch = (S.user && branches.indexOf(S.user.branch) >= 0) ? S.user.branch : (branches[0] || '');
-  C.driver = 'ไม่ระบุ';
-  $('drvBranch').onclick = function (ev) { const x = ev.target.closest('[data-db]'); if (x) { C.drvBranch = x.getAttribute('data-db'); C.driver = 'ไม่ระบุ'; renderDrivers(); } };
-  $('driverList').onclick = function (ev) { const x = ev.target.closest('[data-d]'); if (x) { C.driver = x.getAttribute('data-d'); renderDrivers(); } };
-  C.drvBranches = branches;
-  renderDrivers();
-}
-
-function renderDrivers() {
-  $('drvBranch').innerHTML = C.drvBranches.map(function (b) {
-    return '<button type="button" class="chip' + (b === C.drvBranch ? ' on' : '') + '" data-db="' + esc(b) + '">' + esc(b) + '</button>';
-  }).join('');
-  const list = (S.boot.drivers || []).filter(function (d) { return !C.drvBranch || d.branch === C.drvBranch || d.branch === 'ทุกสาขา' || !d.branch; });
-  const row = function (name, meta) {
-    const on = C.driver === name;
-    return '<button type="button" role="radio" aria-checked="' + on + '" class="opt-row' + (on ? ' on' : '') + '" data-d="' + esc(name) + '">' +
-      '<span class="radio"></span><span class="grow"><span class="t-strong">' + esc(name) + '</span>' + (meta ? '<span class="t-meta">' + esc(meta) + '</span>' : '') + '</span></button>';
-  };
-  $('driverList').innerHTML = list.map(function (d) { return row(d.name, d.branch || ''); }).join('') +
-    row('ไม่ระบุ', 'ให้แผนกยานพาหนะจัดคนขับให้') +
-    (list.length ? '' : '<div class="hint">สาขานี้ยังไม่มีคนขับในชีต Drivers</div>');
-  $('driver').value = C.driver;
-}
-
-/* กันเลือกเวลาที่ผ่านมาแล้วของวันนี้ */
-function nowHM() { const d = new Date(); return pad2(d.getHours()) + ':' + pad2(d.getMinutes()); }
-function syncTimeMin() {
-  const isToday = $('date').value === S.boot.today;
-  $('time').min = isToday ? nowHM() : '';
-  if (isToday && $('time').value && $('time').value < nowHM()) {
-    $('time').value = '';
-    toast('เวลานี้ผ่านมาแล้ว กรุณาเลือกเวลาหลัง ' + nowHM(), true);
-    return false;
-  }
-  return true;
-}
-
 async function submitBooking() {
-  if ($('date').value && $('date').value < S.boot.today) return toast('วันที่ผ่านมาแล้ว', true);
-  if (!syncTimeMin()) return;
   const f = formData($('bookForm'));
   f.type = C.type;
   f.purpose = C.purpose;
   const form = $('bookForm');
   if (!form.reportValidity()) return;
-  if (!f.type) return toast(C.list ? 'กรุณาเลือกรถ' : 'กรุณาเลือกประเภทรถ', true);
-  if (C.list) f.plate = C.plate;
+  if (!f.type) return toast('กรุณาเลือกประเภทรถ', true);
   $('submitBtn').disabled = true;
   busy(true);
   try {
     const r = await call('api_book', f);
-    toast('จองแล้ว ' + r.id + (r.plate ? ' · รถทะเบียน ' + r.plate : ''));
+    toast('ส่งคำขอ ' + r.id + ' เรียบร้อย');
     ['customer', 'phone', 'pickup', 'dropoff', 'time', 'note', 'purposeDetail'].forEach(function (k) { $(k).value = ''; });
     C.monthCache = {};
-    loadAvailability();
     showTab('my');
     backToChat(1800);
   } catch (e) { handleError(e); } finally { $('submitBtn').disabled = false; busy(false); }
@@ -451,9 +363,7 @@ function bookingCard(b, extra) {
     '<div style="font-size:12px;font-weight:600;color:var(--accent)">' + esc(b.purpose) + (b.purposeDetail ? ' · ' + esc(b.purposeDetail) : '') + '</div>' +
     '<div class="t-strong">คุณ ' + esc(b.customer) + ' · ' + esc(b.phone) + '</div>' +
     '<div class="t-meta">รับ: ' + esc(b.pickup) + ' → ส่ง: ' + esc(b.dropoff) + '</div>' +
-    '<div class="t-meta">' + esc(thDate(b.date)) + ' · ' + esc(b.time) + ' · ' + esc(b.type) + ' · คนขับ: ' + esc(b.driver) + '</div>' +
-    (b.plate ? '<div style="font-size:15px;font-weight:700;color:var(--accent)">🚗 ทะเบียน ' + esc(b.plate) + '</div>' : '') +
-    (b.booker ? '<div class="t-meta">ผู้จอง: ' + esc(b.booker) + '</div>' : '') +
+    '<div class="t-meta">' + esc(thDate(b.date)) + ' · ' + esc(b.time) + ' · ' + esc(b.type) + (b.plate ? ' · ' + esc(b.plate) : '') + ' · คนขับ: ' + esc(b.driver) + '</div>' +
     (extra || '') + '</article>';
 }
 
@@ -499,13 +409,11 @@ async function renderDay() {
   let total = 0, used = 0;
   const rows = types.map(function (t) {
     const items = list.filter(function (b) { return b.type === t.type; }).sort(function (a, b) { return String(a.time).localeCompare(String(b.time)); });
-    const act = items.filter(function (b) { return b.status !== 'เสร็จสิ้น'; }).length; // คืนรถแล้ว = รถว่าง
-    const u = Math.min(act, t.total), free = Math.max(0, t.total - act);
+    const u = Math.min(items.length, t.total), free = Math.max(0, t.total - items.length);
     total += t.total; used += u;
     const jobs = items.map(function (b) {
-      const done = b.status === 'เสร็จสิ้น';
-      return '<span class="' + (isPast || done ? 'tag past' : 'tag') + '">' + esc(b.time) + '</span><span style="font-size:13px">' + esc(b.purpose) +
-        (b.plate ? ' · ' + esc(b.plate) : '') + ' · คนขับ: ' + esc(b.driver || 'ไม่ระบุ') + (done ? ' · <b style="color:#1B6337">คืนรถแล้ว</b>' : '') + '</span>';
+      return '<span class="' + (isPast ? 'tag past' : 'tag') + '">' + esc(b.time) + '</span><span style="font-size:13px">' + esc(b.purpose) +
+        (b.plate ? ' · ' + esc(b.plate) : '') + ' · คนขับ: ' + esc(b.driver || 'ไม่ระบุ') + '</span>';
     }).join('<br>');
     const pill = free === 0 ? '<span class="pill bad">เต็ม</span>' : '<span class="pill ok">ว่าง ' + free + '/' + t.total + '</span>';
     return '<div class="list-item"><span class="grow"><span style="font-size:16px;font-weight:700">' + esc(t.type) +
